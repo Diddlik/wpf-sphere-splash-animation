@@ -113,91 +113,186 @@ namespace WpfSphereSplash
                     Width = logoCircle.Size * scaleX,
                     Height = logoCircle.Size * scaleY,
                     Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(logoCircle.Color)),
-                    Opacity = 0
+                    Opacity = 1
                 };
 
-                double startX = random.NextDouble() * AnimationCanvas.Width;
-                double startY = random.NextDouble() * AnimationCanvas.Height;
+                // Target position is the logo position
+                double logoX = logoCircle.X * scaleX - (logoCircle.Size * scaleX / 2);
+                double logoY = logoCircle.Y * scaleY - (logoCircle.Size * scaleY / 2);
 
-                double targetX = logoCircle.X * scaleX - (logoCircle.Size * scaleX / 2);
-                double targetY = logoCircle.Y * scaleY - (logoCircle.Size * scaleY / 2);
-
-                Canvas.SetLeft(circle, startX);
-                Canvas.SetTop(circle, startY);
+                // Start at logo position (before shatter)
+                Canvas.SetLeft(circle, logoX);
+                Canvas.SetTop(circle, logoY);
                 AnimationCanvas.Children.Add(circle);
 
-                AnimateCircle(circle, startX, startY, targetX, targetY, i);
+                // Generate random scatter position
+                double scatterX = random.NextDouble() * AnimationCanvas.Width;
+                double scatterY = random.NextDouble() * AnimationCanvas.Height;
+
+                AnimateCircle(circle, logoX, logoY, scatterX, scatterY, i);
             }
         }
 
-        private void AnimateCircle(Ellipse circle, double startX, double startY, 
-                                   double targetX, double targetY, int index)
+        private void AnimateCircle(Ellipse circle, double logoX, double logoY, 
+                                   double scatterX, double scatterY, int index)
         {
-            double delay = index * 0.05;
+            double delay = index * 0.02; // Stagger the shattering effect
 
-            Storyboard storyboard = new Storyboard();
-            storyboard.BeginTime = TimeSpan.FromSeconds(delay);
-
-            DoubleAnimation fadeIn = new DoubleAnimation
+            // Phase 1: Brief pause at logo position (show assembled logo briefly)
+            Storyboard pauseStoryboard = new Storyboard();
+            pauseStoryboard.BeginTime = TimeSpan.FromSeconds(0.3); // Brief initial pause
+            pauseStoryboard.Duration = TimeSpan.FromSeconds(0.1);
+            pauseStoryboard.Completed += (s, e) =>
             {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(0.5),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                // Phase 2: Shatter - circles fly apart
+                ShatterCircle(circle, logoX, logoY, scatterX, scatterY, delay, index);
             };
-            Storyboard.SetTarget(fadeIn, circle);
-            Storyboard.SetTargetProperty(fadeIn, new PropertyPath(OpacityProperty));
-            storyboard.Children.Add(fadeIn);
+            pauseStoryboard.Begin();
+        }
 
+        private void ShatterCircle(Ellipse circle, double logoX, double logoY,
+                                  double scatterX, double scatterY, double delay, int index)
+        {
+            Storyboard shatterStoryboard = new Storyboard();
+            shatterStoryboard.BeginTime = TimeSpan.FromSeconds(delay);
+
+            // Move to scattered position
             DoubleAnimation moveX = new DoubleAnimation
             {
-                From = startX,
-                To = targetX,
-                Duration = TimeSpan.FromSeconds(1.5),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                From = logoX,
+                To = scatterX,
+                Duration = TimeSpan.FromSeconds(0.8),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             Storyboard.SetTarget(moveX, circle);
             Storyboard.SetTargetProperty(moveX, new PropertyPath(Canvas.LeftProperty));
-            storyboard.Children.Add(moveX);
+            shatterStoryboard.Children.Add(moveX);
 
             DoubleAnimation moveY = new DoubleAnimation
             {
-                From = startY,
-                To = targetY,
-                Duration = TimeSpan.FromSeconds(1.5),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                From = logoY,
+                To = scatterY,
+                Duration = TimeSpan.FromSeconds(0.8),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             Storyboard.SetTarget(moveY, circle);
             Storyboard.SetTargetProperty(moveY, new PropertyPath(Canvas.TopProperty));
-            storyboard.Children.Add(moveY);
+            shatterStoryboard.Children.Add(moveY);
 
+            // Add scale transformation for scatter effect
             ScaleTransform scaleTransform = new ScaleTransform(1, 1);
             circle.RenderTransform = scaleTransform;
             circle.RenderTransformOrigin = new Point(0.5, 0.5);
 
-            DoubleAnimation pulseX = new DoubleAnimation
+            DoubleAnimation scaleOut = new DoubleAnimation
             {
-                From = 0.3,
+                From = 1,
+                To = 0.5,
+                Duration = TimeSpan.FromSeconds(0.8),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            Storyboard.SetTarget(scaleOut, circle);
+            Storyboard.SetTargetProperty(scaleOut, new PropertyPath("RenderTransform.ScaleX"));
+            shatterStoryboard.Children.Add(scaleOut);
+
+            DoubleAnimation scaleOutY = new DoubleAnimation
+            {
+                From = 1,
+                To = 0.5,
+                Duration = TimeSpan.FromSeconds(0.8),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            Storyboard.SetTarget(scaleOutY, circle);
+            Storyboard.SetTargetProperty(scaleOutY, new PropertyPath("RenderTransform.ScaleY"));
+            shatterStoryboard.Children.Add(scaleOutY);
+
+            // Fade slightly during scatter
+            DoubleAnimation fadeOut = new DoubleAnimation
+            {
+                From = 1,
+                To = 0.7,
+                Duration = TimeSpan.FromSeconds(0.8)
+            };
+            Storyboard.SetTarget(fadeOut, circle);
+            Storyboard.SetTargetProperty(fadeOut, new PropertyPath(OpacityProperty));
+            shatterStoryboard.Children.Add(fadeOut);
+
+            shatterStoryboard.Completed += (s, e) =>
+            {
+                // Phase 3: Gather - circles come back together
+                GatherCircle(circle, scatterX, scatterY, logoX, logoY, index);
+            };
+            shatterStoryboard.Begin();
+        }
+
+        private void GatherCircle(Ellipse circle, double scatterX, double scatterY,
+                                 double logoX, double logoY, int index)
+        {
+            // Slight delay before gathering
+            double gatherDelay = index * 0.03;
+            
+            Storyboard gatherStoryboard = new Storyboard();
+            gatherStoryboard.BeginTime = TimeSpan.FromSeconds(0.5 + gatherDelay); // Pause at scattered state
+
+            // Move back to logo position
+            DoubleAnimation moveBackX = new DoubleAnimation
+            {
+                From = scatterX,
+                To = logoX,
+                Duration = TimeSpan.FromSeconds(1.2),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            Storyboard.SetTarget(moveBackX, circle);
+            Storyboard.SetTargetProperty(moveBackX, new PropertyPath(Canvas.LeftProperty));
+            gatherStoryboard.Children.Add(moveBackX);
+
+            DoubleAnimation moveBackY = new DoubleAnimation
+            {
+                From = scatterY,
+                To = logoY,
+                Duration = TimeSpan.FromSeconds(1.2),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            Storyboard.SetTarget(moveBackY, circle);
+            Storyboard.SetTargetProperty(moveBackY, new PropertyPath(Canvas.TopProperty));
+            gatherStoryboard.Children.Add(moveBackY);
+
+            // Scale back to normal with elastic bounce
+            DoubleAnimation scaleBackX = new DoubleAnimation
+            {
+                From = 0.5,
                 To = 1,
-                Duration = TimeSpan.FromSeconds(1.5),
+                Duration = TimeSpan.FromSeconds(1.2),
                 EasingFunction = new ElasticEase { EasingMode = EasingMode.EaseOut, Oscillations = 2 }
             };
-            Storyboard.SetTarget(pulseX, circle);
-            Storyboard.SetTargetProperty(pulseX, new PropertyPath("RenderTransform.ScaleX"));
-            storyboard.Children.Add(pulseX);
+            Storyboard.SetTarget(scaleBackX, circle);
+            Storyboard.SetTargetProperty(scaleBackX, new PropertyPath("RenderTransform.ScaleX"));
+            gatherStoryboard.Children.Add(scaleBackX);
 
-            DoubleAnimation pulseY = new DoubleAnimation
+            DoubleAnimation scaleBackY = new DoubleAnimation
             {
-                From = 0.3,
+                From = 0.5,
                 To = 1,
-                Duration = TimeSpan.FromSeconds(1.5),
+                Duration = TimeSpan.FromSeconds(1.2),
                 EasingFunction = new ElasticEase { EasingMode = EasingMode.EaseOut, Oscillations = 2 }
             };
-            Storyboard.SetTarget(pulseY, circle);
-            Storyboard.SetTargetProperty(pulseY, new PropertyPath("RenderTransform.ScaleY"));
-            storyboard.Children.Add(pulseY);
+            Storyboard.SetTarget(scaleBackY, circle);
+            Storyboard.SetTargetProperty(scaleBackY, new PropertyPath("RenderTransform.ScaleY"));
+            gatherStoryboard.Children.Add(scaleBackY);
 
-            storyboard.Completed += (s, e) =>
+            // Fade back in
+            DoubleAnimation fadeIn = new DoubleAnimation
+            {
+                From = 0.7,
+                To = 1,
+                Duration = TimeSpan.FromSeconds(1.2),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            Storyboard.SetTarget(fadeIn, circle);
+            Storyboard.SetTargetProperty(fadeIn, new PropertyPath(OpacityProperty));
+            gatherStoryboard.Children.Add(fadeIn);
+
+            gatherStoryboard.Completed += (s, e) =>
             {
                 StartBreathingAnimation(circle);
                 
@@ -206,7 +301,7 @@ namespace WpfSphereSplash
                     ShowCompleteLogo();
                 }
             };
-            storyboard.Begin();
+            gatherStoryboard.Begin();
         }
 
         private void StartBreathingAnimation(Ellipse circle)
@@ -313,7 +408,7 @@ namespace WpfSphereSplash
     {
         public double X { get; set; }
         public double Y { get; set; }
-        public string Color { get; set; }
+        public string Color { get; set; } = string.Empty;
         public double Size { get; set; }
     }
 }
