@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11205.157 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfSphereSplash", "WpfSphereSplash.csproj", "{486CE02F-047B-99B7-12FA-7DB6A4F2B45A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{486CE02F-047B-99B7-12FA-7DB6A4F2B45A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{486CE02F-047B-99B7-12FA-7DB6A4F2B45A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{486CE02F-047B-99B7-12FA-7DB6A4F2B45A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{486CE02F-047B-99B7-12FA-7DB6A4F2B45A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F6A85B26-8018-46D8-A437-770CB626BD35}
+	EndGlobalSection
+EndGlobal

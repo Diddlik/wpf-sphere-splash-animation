@@ -197,8 +197,6 @@ namespace WpfSphereSplash
             Storyboard.SetTargetProperty(pulseY, new PropertyPath("RenderTransform.ScaleY"));
             storyboard.Children.Add(pulseY);
 
-            storyboard.Begin();
-
             storyboard.Completed += (s, e) =>
             {
                 StartBreathingAnimation(circle);
@@ -208,6 +206,7 @@ namespace WpfSphereSplash
                     ShowCompleteLogo();
                 }
             };
+            storyboard.Begin();
         }
 
         private void StartBreathingAnimation(Ellipse circle)
