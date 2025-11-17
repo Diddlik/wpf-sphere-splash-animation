@@ -5,12 +5,22 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace WpfSphereSplash
 {
     public partial class SplashScreen : Window
     {
         private readonly Random random = new Random();
+        private readonly List<SphereCircle> sphereCircles = new List<SphereCircle>();
+        private double currentRotationX = 0;
+        private double currentRotationY = 0;
+        private double currentRotationZ = 0;
+        
+        // Sphere parameters
+        private const double SphereRadius = 200.0;
+        private const double CameraDistance = 800.0;
+        private const double RotationSpeed = 0.02; // radians per frame
         
         // Logo-Kreis-Definitionen (extrahiert aus dem DrawingImage)
         private readonly List<LogoCircle> logoCircles = new List<LogoCircle>
@@ -95,8 +105,111 @@ namespace WpfSphereSplash
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            ConvertToSphereCoordinates();
             CreateAndAnimateCircles();
             AnimateLoadingText();
+        }
+        
+        /// <summary>
+        /// Converts the 2D logo circles to 3D sphere coordinates using Fibonacci spiral distribution
+        /// </summary>
+        private void ConvertToSphereCoordinates()
+        {
+            int count = logoCircles.Count;
+            double goldenRatio = (1.0 + Math.Sqrt(5.0)) / 2.0;
+            double angleIncrement = Math.PI * 2.0 * goldenRatio;
+            
+            for (int i = 0; i < count; i++)
+            {
+                var logoCircle = logoCircles[i];
+                
+                // Fibonacci spiral distribution for uniform sphere coverage
+                double t = (double)i / count;
+                double inclination = Math.Acos(1.0 - 2.0 * t); // theta: 0 to PI
+                double azimuth = angleIncrement * i; // phi: 0 to 2PI
+                
+                // Convert spherical to Cartesian coordinates
+                double x = SphereRadius * Math.Sin(inclination) * Math.Cos(azimuth);
+                double y = SphereRadius * Math.Sin(inclination) * Math.Sin(azimuth);
+                double z = SphereRadius * Math.Cos(inclination);
+                
+                var sphereCircle = new SphereCircle
+                {
+                    OriginalX = logoCircle.X,
+                    OriginalY = logoCircle.Y,
+                    Theta = inclination,
+                    Phi = azimuth,
+                    X = x,
+                    Y = y,
+                    Z = z,
+                    Color = logoCircle.Color,
+                    Size = logoCircle.Size
+                };
+                
+                sphereCircles.Add(sphereCircle);
+            }
+        }
+        
+        /// <summary>
+        /// Projects 3D coordinates to 2D canvas with perspective
+        /// </summary>
+        private Point ProjectToCanvas(double x, double y, double z)
+        {
+            // Perspective projection
+            double factor = CameraDistance / (CameraDistance + z);
+            double projectedX = x * factor + AnimationCanvas.Width / 2;
+            double projectedY = y * factor + AnimationCanvas.Height / 2;
+            
+            return new Point(projectedX, projectedY);
+        }
+        
+        /// <summary>
+        /// Rotates a 3D point around X, Y, and Z axes
+        /// </summary>
+        private (double x, double y, double z) RotatePoint(double x, double y, double z, double rotX, double rotY, double rotZ)
+        {
+            // Rotation around X axis
+            double cosX = Math.Cos(rotX);
+            double sinX = Math.Sin(rotX);
+            double y1 = y * cosX - z * sinX;
+            double z1 = y * sinX + z * cosX;
+            y = y1;
+            z = z1;
+            
+            // Rotation around Y axis
+            double cosY = Math.Cos(rotY);
+            double sinY = Math.Sin(rotY);
+            double x1 = x * cosY + z * sinY;
+            z1 = -x * sinY + z * cosY;
+            x = x1;
+            z = z1;
+            
+            // Rotation around Z axis
+            double cosZ = Math.Cos(rotZ);
+            double sinZ = Math.Sin(rotZ);
+            x1 = x * cosZ - y * sinZ;
+            y1 = x * sinZ + y * cosZ;
+            x = x1;
+            y = y1;
+            
+            return (x, y, z);
+        }
+        
+        /// <summary>
+        /// Calculates scale factor based on Z depth (closer = larger, further = smaller)
+        /// </summary>
+        private double GetDepthScale(double z)
+        {
+            return CameraDistance / (CameraDistance + z);
+        }
+        
+        /// <summary>
+        /// Calculates opacity based on Z depth (closer = more opaque, further = more transparent)
+        /// </summary>
+        private double GetDepthOpacity(double z)
+        {
+            double scale = GetDepthScale(z);
+            return Math.Max(0.3, Math.Min(1.0, scale));
         }
 
         private void CreateAndAnimateCircles()
@@ -104,239 +217,288 @@ namespace WpfSphereSplash
             double scaleX = AnimationCanvas.Width / 36.0;
             double scaleY = AnimationCanvas.Height / 36.0;
 
-            for (int i = 0; i < logoCircles.Count; i++)
+            // Sort circles by Z-depth (back to front) for proper rendering
+            var sortedCircles = sphereCircles.OrderBy(c => c.Z).ToList();
+            
+            for (int i = 0; i < sortedCircles.Count; i++)
             {
-                var logoCircle = logoCircles[i];
+                var sphereCircle = sortedCircles[i];
                 
                 Ellipse circle = new Ellipse
                 {
-                    Width = logoCircle.Size * scaleX,
-                    Height = logoCircle.Size * scaleY,
-                    Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(logoCircle.Color)),
-                    Opacity = 1
+                    Width = sphereCircle.Size * scaleX,
+                    Height = sphereCircle.Size * scaleY,
+                    Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(sphereCircle.Color)),
+                    Opacity = 1,
+                    Tag = sphereCircle // Store reference to sphere circle
                 };
-
-                // Target position is the logo position
-                double logoX = logoCircle.X * scaleX - (logoCircle.Size * scaleX / 2);
-                double logoY = logoCircle.Y * scaleY - (logoCircle.Size * scaleY / 2);
-
-                // Start at logo position (before shatter)
-                Canvas.SetLeft(circle, logoX);
-                Canvas.SetTop(circle, logoY);
-                AnimationCanvas.Children.Add(circle);
 
                 // Generate random scatter position
                 double scatterX = random.NextDouble() * AnimationCanvas.Width;
                 double scatterY = random.NextDouble() * AnimationCanvas.Height;
 
-                AnimateCircle(circle, logoX, logoY, scatterX, scatterY, i);
+                // Start at scattered position
+                Canvas.SetLeft(circle, scatterX);
+                Canvas.SetTop(circle, scatterY);
+                Canvas.SetZIndex(circle, (int)(sphereCircle.Z + 1000)); // Z-ordering
+                
+                AnimationCanvas.Children.Add(circle);
+                sphereCircle.UIElement = circle;
+
+                AnimateCircle(circle, sphereCircle, scatterX, scatterY, i);
             }
         }
 
-        private void AnimateCircle(Ellipse circle, double logoX, double logoY, 
+        private void AnimateCircle(Ellipse circle, SphereCircle sphereCircle, 
                                    double scatterX, double scatterY, int index)
         {
-            double delay = index * 0.02; // Stagger the shattering effect
+            double delay = index * 0.02; // Stagger the animation
 
-            // Phase 1: Brief pause at logo position (show assembled logo briefly)
+            // Phase 1: Brief pause at scattered position
             Storyboard pauseStoryboard = new Storyboard();
-            pauseStoryboard.BeginTime = TimeSpan.FromSeconds(0.3); // Brief initial pause
+            pauseStoryboard.BeginTime = TimeSpan.FromSeconds(0.5 + delay);
             pauseStoryboard.Duration = TimeSpan.FromSeconds(0.1);
             pauseStoryboard.Completed += (s, e) =>
             {
-                // Phase 2: Shatter - circles fly apart
-                ShatterCircle(circle, logoX, logoY, scatterX, scatterY, delay, index);
+                // Phase 2: Form sphere - circles fly to sphere positions
+                FormSphere(circle, sphereCircle, scatterX, scatterY, index);
             };
             pauseStoryboard.Begin();
         }
 
-        private void ShatterCircle(Ellipse circle, double logoX, double logoY,
-                                  double scatterX, double scatterY, double delay, int index)
+        private void FormSphere(Ellipse circle, SphereCircle sphereCircle,
+                               double scatterX, double scatterY, int index)
         {
-            Storyboard shatterStoryboard = new Storyboard();
-            shatterStoryboard.BeginTime = TimeSpan.FromSeconds(delay);
+            // Initial rotation for sphere formation
+            var (rotX, rotY, rotZ) = RotatePoint(sphereCircle.X, sphereCircle.Y, sphereCircle.Z, 
+                                                  currentRotationX, currentRotationY, currentRotationZ);
+            Point projected = ProjectToCanvas(rotX, rotY, rotZ);
+            double depthScale = GetDepthScale(rotZ);
+            double depthOpacity = GetDepthOpacity(rotZ);
+            
+            Storyboard formStoryboard = new Storyboard();
 
-            // Move to scattered position
+            // Move to sphere position
             DoubleAnimation moveX = new DoubleAnimation
             {
-                From = logoX,
-                To = scatterX,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                From = scatterX,
+                To = projected.X - circle.Width / 2,
+                Duration = TimeSpan.FromSeconds(1.5),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
             Storyboard.SetTarget(moveX, circle);
             Storyboard.SetTargetProperty(moveX, new PropertyPath(Canvas.LeftProperty));
-            shatterStoryboard.Children.Add(moveX);
+            formStoryboard.Children.Add(moveX);
 
             DoubleAnimation moveY = new DoubleAnimation
             {
-                From = logoY,
-                To = scatterY,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                From = scatterY,
+                To = projected.Y - circle.Height / 2,
+                Duration = TimeSpan.FromSeconds(1.5),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
             Storyboard.SetTarget(moveY, circle);
             Storyboard.SetTargetProperty(moveY, new PropertyPath(Canvas.TopProperty));
-            shatterStoryboard.Children.Add(moveY);
+            formStoryboard.Children.Add(moveY);
 
-            // Add scale transformation for scatter effect
-            ScaleTransform scaleTransform = new ScaleTransform(1, 1);
-            circle.RenderTransform = scaleTransform;
-            circle.RenderTransformOrigin = new Point(0.5, 0.5);
-
-            DoubleAnimation scaleOut = new DoubleAnimation
+            // Add scale transformation based on depth
+            if (circle.RenderTransform == null || !(circle.RenderTransform is ScaleTransform))
             {
-                From = 1,
-                To = 0.5,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(scaleOut, circle);
-            Storyboard.SetTargetProperty(scaleOut, new PropertyPath("RenderTransform.ScaleX"));
-            shatterStoryboard.Children.Add(scaleOut);
+                ScaleTransform scaleTransform = new ScaleTransform(1, 1);
+                circle.RenderTransform = scaleTransform;
+                circle.RenderTransformOrigin = new Point(0.5, 0.5);
+            }
 
-            DoubleAnimation scaleOutY = new DoubleAnimation
+            DoubleAnimation scaleX = new DoubleAnimation
             {
-                From = 1,
-                To = 0.5,
-                Duration = TimeSpan.FromSeconds(0.8),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(scaleOutY, circle);
-            Storyboard.SetTargetProperty(scaleOutY, new PropertyPath("RenderTransform.ScaleY"));
-            shatterStoryboard.Children.Add(scaleOutY);
-
-            // Fade slightly during scatter
-            DoubleAnimation fadeOut = new DoubleAnimation
-            {
-                From = 1,
-                To = 0.7,
-                Duration = TimeSpan.FromSeconds(0.8)
-            };
-            Storyboard.SetTarget(fadeOut, circle);
-            Storyboard.SetTargetProperty(fadeOut, new PropertyPath(OpacityProperty));
-            shatterStoryboard.Children.Add(fadeOut);
-
-            shatterStoryboard.Completed += (s, e) =>
-            {
-                // Phase 3: Gather - circles come back together
-                GatherCircle(circle, scatterX, scatterY, logoX, logoY, index);
-            };
-            shatterStoryboard.Begin();
-        }
-
-        private void GatherCircle(Ellipse circle, double scatterX, double scatterY,
-                                 double logoX, double logoY, int index)
-        {
-            // Slight delay before gathering
-            double gatherDelay = index * 0.03;
-            
-            Storyboard gatherStoryboard = new Storyboard();
-            gatherStoryboard.BeginTime = TimeSpan.FromSeconds(0.5 + gatherDelay); // Pause at scattered state
-
-            // Move back to logo position
-            DoubleAnimation moveBackX = new DoubleAnimation
-            {
-                From = scatterX,
-                To = logoX,
-                Duration = TimeSpan.FromSeconds(1.2),
+                From = 1.0,
+                To = depthScale,
+                Duration = TimeSpan.FromSeconds(1.5),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
-            Storyboard.SetTarget(moveBackX, circle);
-            Storyboard.SetTargetProperty(moveBackX, new PropertyPath(Canvas.LeftProperty));
-            gatherStoryboard.Children.Add(moveBackX);
+            Storyboard.SetTarget(scaleX, circle);
+            Storyboard.SetTargetProperty(scaleX, new PropertyPath("RenderTransform.ScaleX"));
+            formStoryboard.Children.Add(scaleX);
 
-            DoubleAnimation moveBackY = new DoubleAnimation
+            DoubleAnimation scaleY = new DoubleAnimation
             {
-                From = scatterY,
-                To = logoY,
-                Duration = TimeSpan.FromSeconds(1.2),
+                From = 1.0,
+                To = depthScale,
+                Duration = TimeSpan.FromSeconds(1.5),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
-            Storyboard.SetTarget(moveBackY, circle);
-            Storyboard.SetTargetProperty(moveBackY, new PropertyPath(Canvas.TopProperty));
-            gatherStoryboard.Children.Add(moveBackY);
+            Storyboard.SetTarget(scaleY, circle);
+            Storyboard.SetTargetProperty(scaleY, new PropertyPath("RenderTransform.ScaleY"));
+            formStoryboard.Children.Add(scaleY);
 
-            // Scale back to normal with elastic bounce
-            DoubleAnimation scaleBackX = new DoubleAnimation
+            // Fade based on depth
+            DoubleAnimation fadeAnim = new DoubleAnimation
             {
-                From = 0.5,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(1.2),
-                EasingFunction = new ElasticEase { EasingMode = EasingMode.EaseOut, Oscillations = 2 }
+                From = 1.0,
+                To = depthOpacity,
+                Duration = TimeSpan.FromSeconds(1.5),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
-            Storyboard.SetTarget(scaleBackX, circle);
-            Storyboard.SetTargetProperty(scaleBackX, new PropertyPath("RenderTransform.ScaleX"));
-            gatherStoryboard.Children.Add(scaleBackX);
+            Storyboard.SetTarget(fadeAnim, circle);
+            Storyboard.SetTargetProperty(fadeAnim, new PropertyPath(OpacityProperty));
+            formStoryboard.Children.Add(fadeAnim);
 
-            DoubleAnimation scaleBackY = new DoubleAnimation
+            formStoryboard.Completed += (s, e) =>
             {
-                From = 0.5,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(1.2),
-                EasingFunction = new ElasticEase { EasingMode = EasingMode.EaseOut, Oscillations = 2 }
-            };
-            Storyboard.SetTarget(scaleBackY, circle);
-            Storyboard.SetTargetProperty(scaleBackY, new PropertyPath("RenderTransform.ScaleY"));
-            gatherStoryboard.Children.Add(scaleBackY);
-
-            // Fade back in
-            DoubleAnimation fadeIn = new DoubleAnimation
-            {
-                From = 0.7,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(1.2),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-            };
-            Storyboard.SetTarget(fadeIn, circle);
-            Storyboard.SetTargetProperty(fadeIn, new PropertyPath(OpacityProperty));
-            gatherStoryboard.Children.Add(fadeIn);
-
-            gatherStoryboard.Completed += (s, e) =>
-            {
-                StartBreathingAnimation(circle);
-                
-                if (index == logoCircles.Count - 1)
+                if (index == sphereCircles.Count - 1)
                 {
-                    ShowCompleteLogo();
+                    // Start continuous rotation and breathing
+                    StartRotationAndBreathing();
                 }
             };
-            gatherStoryboard.Begin();
+            formStoryboard.Begin();
         }
 
-        private void StartBreathingAnimation(Ellipse circle)
+        private void StartRotationAndBreathing()
         {
-            Storyboard breathingStoryboard = new Storyboard
+            var rotationTimer = new System.Windows.Threading.DispatcherTimer
             {
-                RepeatBehavior = RepeatBehavior.Forever,
-                AutoReverse = true
+                Interval = TimeSpan.FromMilliseconds(30) // ~33 FPS
             };
-
-            DoubleAnimation breatheScale = new DoubleAnimation
+            
+            int frameCount = 0;
+            rotationTimer.Tick += (s, e) =>
             {
-                From = 1,
-                To = 1.1,
-                Duration = TimeSpan.FromSeconds(2.0),
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+                frameCount++;
+                
+                // Update rotation angles
+                currentRotationX += RotationSpeed * 0.7;
+                currentRotationY += RotationSpeed * 1.0;
+                currentRotationZ += RotationSpeed * 0.3;
+                
+                // Update each circle's position
+                foreach (var sphereCircle in sphereCircles)
+                {
+                    if (sphereCircle.UIElement == null) continue;
+                    
+                    // Rotate the sphere point
+                    var (rotX, rotY, rotZ) = RotatePoint(sphereCircle.X, sphereCircle.Y, sphereCircle.Z,
+                                                          currentRotationX, currentRotationY, currentRotationZ);
+                    
+                    // Add breathing effect (subtle pulsation)
+                    double breathingFactor = 1.0 + 0.05 * Math.Sin(frameCount * 0.02);
+                    rotX *= breathingFactor;
+                    rotY *= breathingFactor;
+                    rotZ *= breathingFactor;
+                    
+                    // Project to 2D
+                    Point projected = ProjectToCanvas(rotX, rotY, rotZ);
+                    double depthScale = GetDepthScale(rotZ);
+                    double depthOpacity = GetDepthOpacity(rotZ);
+                    
+                    // Update UI element
+                    var circle = sphereCircle.UIElement;
+                    Canvas.SetLeft(circle, projected.X - circle.Width / 2);
+                    Canvas.SetTop(circle, projected.Y - circle.Height / 2);
+                    Canvas.SetZIndex(circle, (int)(rotZ + 1000)); // Update Z-ordering
+                    
+                    if (circle.RenderTransform is ScaleTransform scaleTransform)
+                    {
+                        scaleTransform.ScaleX = depthScale;
+                        scaleTransform.ScaleY = depthScale;
+                    }
+                    
+                    circle.Opacity = depthOpacity;
+                }
+                
+                // After some time, transition to final logo
+                if (frameCount > 180) // About 6 seconds at 30 FPS
+                {
+                    rotationTimer.Stop();
+                    TransitionToLogo();
+                }
             };
+            
+            rotationTimer.Start();
+        }
 
-            Storyboard.SetTarget(breatheScale, circle);
-            Storyboard.SetTargetProperty(breatheScale, new PropertyPath("RenderTransform.ScaleX"));
-            breathingStoryboard.Children.Add(breatheScale);
-
-            DoubleAnimation breatheScaleY = new DoubleAnimation
+        private void TransitionToLogo()
+        {
+            double scaleX = AnimationCanvas.Width / 36.0;
+            double scaleY = AnimationCanvas.Height / 36.0;
+            
+            for (int i = 0; i < sphereCircles.Count; i++)
             {
-                From = 1,
-                To = 1.1,
-                Duration = TimeSpan.FromSeconds(2.0),
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-            };
-
-            Storyboard.SetTarget(breatheScaleY, circle);
-            Storyboard.SetTargetProperty(breatheScaleY, new PropertyPath("RenderTransform.ScaleY"));
-            breathingStoryboard.Children.Add(breatheScaleY);
-
-            breathingStoryboard.Begin();
+                var sphereCircle = sphereCircles[i];
+                if (sphereCircle.UIElement == null) continue;
+                
+                var circle = sphereCircle.UIElement;
+                
+                // Target position is the original logo position
+                double logoX = sphereCircle.OriginalX * scaleX - (sphereCircle.Size * scaleX / 2);
+                double logoY = sphereCircle.OriginalY * scaleY - (sphereCircle.Size * scaleY / 2);
+                
+                Storyboard logoStoryboard = new Storyboard();
+                logoStoryboard.BeginTime = TimeSpan.FromSeconds(i * 0.01);
+                
+                // Move to logo position
+                DoubleAnimation moveX = new DoubleAnimation
+                {
+                    To = logoX,
+                    Duration = TimeSpan.FromSeconds(1.2),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                Storyboard.SetTarget(moveX, circle);
+                Storyboard.SetTargetProperty(moveX, new PropertyPath(Canvas.LeftProperty));
+                logoStoryboard.Children.Add(moveX);
+                
+                DoubleAnimation moveY = new DoubleAnimation
+                {
+                    To = logoY,
+                    Duration = TimeSpan.FromSeconds(1.2),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                Storyboard.SetTarget(moveY, circle);
+                Storyboard.SetTargetProperty(moveY, new PropertyPath(Canvas.TopProperty));
+                logoStoryboard.Children.Add(moveY);
+                
+                // Reset scale
+                DoubleAnimation scaleBackX = new DoubleAnimation
+                {
+                    To = 1.0,
+                    Duration = TimeSpan.FromSeconds(1.2),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                Storyboard.SetTarget(scaleBackX, circle);
+                Storyboard.SetTargetProperty(scaleBackX, new PropertyPath("RenderTransform.ScaleX"));
+                logoStoryboard.Children.Add(scaleBackX);
+                
+                DoubleAnimation scaleBackY = new DoubleAnimation
+                {
+                    To = 1.0,
+                    Duration = TimeSpan.FromSeconds(1.2),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                Storyboard.SetTarget(scaleBackY, circle);
+                Storyboard.SetTargetProperty(scaleBackY, new PropertyPath("RenderTransform.ScaleY"));
+                logoStoryboard.Children.Add(scaleBackY);
+                
+                // Reset opacity
+                DoubleAnimation opacityAnim = new DoubleAnimation
+                {
+                    To = 1.0,
+                    Duration = TimeSpan.FromSeconds(1.2),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                };
+                Storyboard.SetTarget(opacityAnim, circle);
+                Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(OpacityProperty));
+                logoStoryboard.Children.Add(opacityAnim);
+                
+                logoStoryboard.Completed += (s, e) =>
+                {
+                    if (i == sphereCircles.Count - 1)
+                    {
+                        ShowCompleteLogo();
+                    }
+                };
+                
+                logoStoryboard.Begin();
+            }
         }
 
         private void ShowCompleteLogo()
@@ -402,6 +564,23 @@ namespace WpfSphereSplash
             };
             timer.Start();
         }
+    }
+    
+    /// <summary>
+    /// Represents a circle in 3D spherical coordinates
+    /// </summary>
+    public class SphereCircle
+    {
+        public double OriginalX { get; set; }
+        public double OriginalY { get; set; }
+        public double Theta { get; set; }  // Inclination angle (0 to PI)
+        public double Phi { get; set; }    // Azimuth angle (0 to 2PI)
+        public double X { get; set; }      // Cartesian X
+        public double Y { get; set; }      // Cartesian Y
+        public double Z { get; set; }      // Cartesian Z
+        public string Color { get; set; } = string.Empty;
+        public double Size { get; set; }
+        public Ellipse? UIElement { get; set; }
     }
 
     public class LogoCircle
