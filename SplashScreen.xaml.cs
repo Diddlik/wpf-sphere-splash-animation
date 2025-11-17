@@ -4,15 +4,89 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Collections.Generic;
 
 namespace WpfSphereSplash
 {
     public partial class SplashScreen : Window
     {
-        private const int CircleCount = 25; // Anzahl der Kreise
-        private const double SphereRadius = 150; // Radius der finalen Sphäre
-        private const double CircleSize = 40; // Größe der einzelnen Kreise
         private readonly Random random = new Random();
+        
+        // Logo-Kreis-Definitionen (extrahiert aus dem DrawingImage)
+        private readonly List<LogoCircle> logoCircles = new List<LogoCircle>
+        {
+            // Graue Kreise (#FF7E8087)
+            new LogoCircle { X = 16.0631, Y = 19.0546, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 22.184, Y = 19.2153, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 18.7387, Y = 10.6694, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 22.6928, Y = 16.7469, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 15.7028, Y = 23.8034, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 11.8122, Y = 16.619, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 24.5228, Y = 19.7088, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 14.6735, Y = 8.53077, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 7.798, Y = 19.1937, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 23.6808, Y = 25.8242, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 25.0285, Y = 17.2431, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 21.1552, Y = 10.218, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 24.7972, Y = 8.8721, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 17.0746, Y = 27.8198, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 13.1293, Y = 25.8567, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 9.83694, Y = 12.2589, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 16.9528, Y = 8.01512, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 28.7536, Y = 14.8667, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 19.2364, Y = 28.2743, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 4.4746, Y = 16.8978, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 31.7939, Y = 19.5529, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 25.955, Y = 26.2041, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 13.6528, Y = 3.49311, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 5.53563, Y = 20.9982, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 23.4719, Y = 6.55986, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 27.1511, Y = 8.66005, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 22.5998, Y = 32.7103, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 13.4732, Y = 32.3996, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 3.7934, Y = 11.2945, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 32.4357, Y = 25.0721, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 19.4192, Y = 4.57163, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 8.99506, Y = 6.5709, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 7.44448, Y = 27.246, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 4.29638, Y = 14.4966, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 30.5799, Y = 11.0905, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 17.1893, Y = 33.9777, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 34.2467, Y = 21.1672, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 28.1075, Y = 30.6435, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 10.7405, Y = 2.64246, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 16.0227, Y = 1.15507, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 2.62509, Y = 18.7575, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 4.20061, Y = 24.8877, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 35.4227, Y = 17.7279, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 34.1572, Y = 12.5626, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 20.2629, Y = 35.0166, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 26.7293, Y = 31.2791, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 24.1084, Y = 1.95866, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 11.0608, Y = 32.337, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 7.72315, Y = 30.3982, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 28.6115, Y = 5.81974, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 4.00002, Y = 8.76757, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 21.6079, Y = 2.12994, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 5.96056, Y = 4.92925, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 6.47539, Y = 30.067, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 32.1983, Y = 27.376, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 15.6113, Y = 35.4735, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 2.01553, Y = 12.5966, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 32.0717, Y = 7.72346, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 11.9668, Y = 2.14288, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 1.68217, Y = 22.5748, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 34.1725, Y = 23.678, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 29.8263, Y = 30.814, Color = "#FF7E8087", Size = 2.0 },
+            new LogoCircle { X = 34.5704, Y = 13.7106, Color = "#FF7E8087", Size = 2.0 },
+            
+            // Grüne Akzent-Kreise (#FFC4D82E)
+            new LogoCircle { X = 29.7252, Y = 23.4317, Color = "#FFC4D82E", Size = 2.0 },
+            new LogoCircle { X = 9.1142, Y = 23.2867, Color = "#FFC4D82E", Size = 2.0 },
+            new LogoCircle { X = 11.066, Y = 6.78541, Color = "#FFC4D82E", Size = 2.0 },
+            new LogoCircle { X = 30.7693, Y = 15.1849, Color = "#FFC4D82E", Size = 2.0 },
+            new LogoCircle { X = 11.145, Y = 29.4211, Color = "#FFC4D82E", Size = 2.0 }
+        };
 
         public SplashScreen()
         {
@@ -27,65 +101,43 @@ namespace WpfSphereSplash
 
         private void CreateAndAnimateCircles()
         {
-            double centerX = AnimationCanvas.Width / 2;
-            double centerY = AnimationCanvas.Height / 2;
+            double scaleX = AnimationCanvas.Width / 36.0;
+            double scaleY = AnimationCanvas.Height / 36.0;
 
-            for (int i = 0; i < CircleCount; i++)
+            for (int i = 0; i < logoCircles.Count; i++)
             {
-                // Kreis erstellen
+                var logoCircle = logoCircles[i];
+                
                 Ellipse circle = new Ellipse
                 {
-                    Width = CircleSize,
-                    Height = CircleSize,
-                    Fill = GetCircleColor(i),
+                    Width = logoCircle.Size * scaleX,
+                    Height = logoCircle.Size * scaleY,
+                    Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(logoCircle.Color)),
                     Opacity = 0
                 };
 
-                // Zufällige Startposition (außerhalb des sichtbaren Bereichs)
                 double startX = random.NextDouble() * AnimationCanvas.Width;
                 double startY = random.NextDouble() * AnimationCanvas.Height;
 
-                // Endposition auf der Sphäre berechnen
-                double angle = (2 * Math.PI / CircleCount) * i;
-                double targetX = centerX + Math.Cos(angle) * SphereRadius - CircleSize / 2;
-                double targetY = centerY + Math.Sin(angle) * SphereRadius - CircleSize / 2;
+                double targetX = logoCircle.X * scaleX - (logoCircle.Size * scaleX / 2);
+                double targetY = logoCircle.Y * scaleY - (logoCircle.Size * scaleY / 2);
 
-                // Kreis zum Canvas hinzufügen
                 Canvas.SetLeft(circle, startX);
                 Canvas.SetTop(circle, startY);
                 AnimationCanvas.Children.Add(circle);
 
-                // Animation erstellen
                 AnimateCircle(circle, startX, startY, targetX, targetY, i);
-            }
-        }
-
-        private Brush GetCircleColor(int index)
-        {
-            // Einige Kreise in Grün (Akzent), die meisten in Grau
-            if (index % 8 == 0 || index % 13 == 0)
-            {
-                return new SolidColorBrush(Color.FromRgb(139, 195, 74)); // Grün
-            }
-            else
-            {
-                // Verschiedene Grautöne
-                byte grayValue = (byte)random.Next(100, 180);
-                return new SolidColorBrush(Color.FromRgb(grayValue, grayValue, grayValue));
             }
         }
 
         private void AnimateCircle(Ellipse circle, double startX, double startY, 
                                    double targetX, double targetY, int index)
         {
-            // Verzögerung für gestaffelten Start
-            double delay = index * 0.08;
+            double delay = index * 0.05;
 
-            // Storyboard für alle Animationen
             Storyboard storyboard = new Storyboard();
             storyboard.BeginTime = TimeSpan.FromSeconds(delay);
 
-            // 1. Fade In Animation
             DoubleAnimation fadeIn = new DoubleAnimation
             {
                 From = 0,
@@ -97,7 +149,6 @@ namespace WpfSphereSplash
             Storyboard.SetTargetProperty(fadeIn, new PropertyPath(OpacityProperty));
             storyboard.Children.Add(fadeIn);
 
-            // 2. X-Position Animation
             DoubleAnimation moveX = new DoubleAnimation
             {
                 From = startX,
@@ -109,7 +160,6 @@ namespace WpfSphereSplash
             Storyboard.SetTargetProperty(moveX, new PropertyPath(Canvas.LeftProperty));
             storyboard.Children.Add(moveX);
 
-            // 3. Y-Position Animation
             DoubleAnimation moveY = new DoubleAnimation
             {
                 From = startY,
@@ -121,7 +171,6 @@ namespace WpfSphereSplash
             Storyboard.SetTargetProperty(moveY, new PropertyPath(Canvas.TopProperty));
             storyboard.Children.Add(moveY);
 
-            // 4. Pulsier-Animation (Scale)
             ScaleTransform scaleTransform = new ScaleTransform(1, 1);
             circle.RenderTransform = scaleTransform;
             circle.RenderTransformOrigin = new Point(0.5, 0.5);
@@ -148,16 +197,21 @@ namespace WpfSphereSplash
             Storyboard.SetTargetProperty(pulseY, new PropertyPath("RenderTransform.ScaleY"));
             storyboard.Children.Add(pulseY);
 
-            // Animation starten
             storyboard.Begin();
 
-            // Nach Abschluss: Atmungs-Animation starten
-            storyboard.Completed += (s, e) => StartBreathingAnimation(circle);
+            storyboard.Completed += (s, e) =>
+            {
+                StartBreathingAnimation(circle);
+                
+                if (index == logoCircles.Count - 1)
+                {
+                    ShowCompleteLogo();
+                }
+            };
         }
 
         private void StartBreathingAnimation(Ellipse circle)
         {
-            // Kontinuierliche Atmungs-Animation
             Storyboard breathingStoryboard = new Storyboard
             {
                 RepeatBehavior = RepeatBehavior.Forever,
@@ -167,8 +221,8 @@ namespace WpfSphereSplash
             DoubleAnimation breatheScale = new DoubleAnimation
             {
                 From = 1,
-                To = 1.15,
-                Duration = TimeSpan.FromSeconds(1.5),
+                To = 1.1,
+                Duration = TimeSpan.FromSeconds(2.0),
                 EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
             };
 
@@ -179,8 +233,8 @@ namespace WpfSphereSplash
             DoubleAnimation breatheScaleY = new DoubleAnimation
             {
                 From = 1,
-                To = 1.15,
-                Duration = TimeSpan.FromSeconds(1.5),
+                To = 1.1,
+                Duration = TimeSpan.FromSeconds(2.0),
                 EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
             };
 
@@ -189,6 +243,38 @@ namespace WpfSphereSplash
             breathingStoryboard.Children.Add(breatheScaleY);
 
             breathingStoryboard.Begin();
+        }
+
+        private void ShowCompleteLogo()
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                
+                if (CompleteLogo != null)
+                {
+                    Storyboard logoFadeIn = new Storyboard();
+                    
+                    DoubleAnimation fadeIn = new DoubleAnimation
+                    {
+                        From = 0,
+                        To = 1,
+                        Duration = TimeSpan.FromSeconds(1.0),
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                    };
+                    
+                    Storyboard.SetTarget(fadeIn, CompleteLogo);
+                    Storyboard.SetTargetProperty(fadeIn, new PropertyPath(OpacityProperty));
+                    logoFadeIn.Children.Add(fadeIn);
+                    
+                    logoFadeIn.Begin();
+                }
+            };
+            timer.Start();
         }
 
         private void AnimateLoadingText()
@@ -222,5 +308,13 @@ namespace WpfSphereSplash
             };
             timer.Start();
         }
+    }
+
+    public class LogoCircle
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string Color { get; set; }
+        public double Size { get; set; }
     }
 }
